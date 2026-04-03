@@ -15,7 +15,7 @@ export default function App() {
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar current={page} onNavigate={setPage} />
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pb-24 md:pb-0">
         {page === "dashboard" && <DashboardPage />}
         {page === "add" && <AddWordsPage />}
         {page === "wordlist" && <WordListPage />}
