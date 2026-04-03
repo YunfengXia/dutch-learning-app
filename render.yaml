@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: dutch-learning-api
+    env: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: ALLOWED_ORIGINS
+        value: https://your-frontend.vercel.app
