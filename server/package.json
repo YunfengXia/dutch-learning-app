@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
+    "build": "echo 'No build step required for server'",
     "test:meta": "node src/tests/metaRegression.test.js"
   },
   "dependencies": {
