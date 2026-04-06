@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, BookOpen, Layers, Globe, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useWordStore } from "../store/wordStore";
@@ -15,6 +15,7 @@ const SOURCES: { label: string; value: WordSource | "all" }[] = [
 
 export default function DashboardPage() {
   const { words, loading, fetchWords, deleteWords } = useWordStore();
+  const bootstrapped = useRef(false);
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<WordSource | "all">("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -23,9 +24,17 @@ export default function DashboardPage() {
   const [dragAction, setDragAction] = useState<"select" | "deselect" | null>(null);
 
   useEffect(() => {
-    fetchWords();
+    if (bootstrapped.current) return;
+    bootstrapped.current = true;
+
+    if (words.length > 0) {
+      fetchWords({ silent: true });
+    } else {
+      fetchWords();
+    }
+
     initSpeechVoices();
-  }, [fetchWords]);
+  }, [fetchWords, words.length]);
 
   const categories = useMemo(() => {
     const set = new Set(words.map((w) => w.category || "general"));
