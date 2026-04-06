@@ -85,9 +85,9 @@ export default function ImportPage() {
   const checkedCount = checked.size;
 
   return (
-    <div className="p-8 max-w-3xl mx-auto space-y-8">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Import Document</h1>
+        <h2 className="text-lg font-semibold text-slate-800">Import Document</h2>
         <p className="text-slate-500 mt-1 text-sm">
           Upload a file or paste text — the app will extract Dutch vocabulary candidates for you to review.
         </p>

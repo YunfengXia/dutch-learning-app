@@ -4,10 +4,9 @@ import DashboardPage from "./pages/DashboardPage";
 import AddWordsPage from "./pages/AddWordsPage";
 import FlashcardsPage from "./pages/FlashcardsPage";
 import WordListPage from "./pages/WordListPage";
-import ImportPage from "./pages/ImportPage";
 import ListeningPage from "./pages/ListeningPage";
 
-export type Page = "dashboard" | "add" | "wordlist" | "flashcards" | "import" | "listening";
+export type Page = "dashboard" | "add" | "wordlist" | "flashcards" | "listening";
 
 export default function App() {
   const [page, setPage] = useState<Page>("dashboard");
@@ -20,7 +19,6 @@ export default function App() {
         {page === "add" && <AddWordsPage />}
         {page === "wordlist" && <WordListPage />}
         {page === "flashcards" && <FlashcardsPage />}
-        {page === "import" && <ImportPage />}
         {page === "listening" && <ListeningPage />}
       </main>
     </div>

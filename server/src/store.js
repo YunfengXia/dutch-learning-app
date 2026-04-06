@@ -1,26 +1,39 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DATA_DIR = path.join(__dirname, "..", "data");
+const DATA_FILE = path.join(DATA_DIR, "words.json");
+
 /**
- * In-memory word store.
- * Replace with a database (SQLite / Postgres) for persistence.
- *
- * Word shape:
- * {
- *   id: string,
- *   word: string,
- *   translation: string,
- *   englishExplanation: string,
- *   partOfSpeech: string,
- *   partOfSpeechZh: string,
- *   article: "de" | "het" | "",
- *   notes: string,
- *   usageCount: number,
- *   source: "manual" | "scrape" | "import" | "ocr",
- *   category: string,
- *   createdAt: string (ISO),
- * }
+ * File-backed word store.
+ * Words are persisted to data/words.json so they survive server restarts.
  */
 
-let words = [];
-let nextId = 1;
+function loadFromDisk() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    if (!fs.existsSync(DATA_FILE)) return { words: [], nextId: 1 };
+    const raw = fs.readFileSync(DATA_FILE, "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return { words: [], nextId: 1 };
+  }
+}
+
+function saveToDisk() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ words, nextId }, null, 2), "utf8");
+  } catch (err) {
+    console.error("Failed to persist words:", err);
+  }
+}
+
+const stored = loadFromDisk();
+let words = stored.words;
+let nextId = stored.nextId ?? 1;
 
 export function getAll() {
   return words;
@@ -62,18 +75,22 @@ export function addWords(entries) {
       added.push(record);
     }
   }
+  if (added.length > 0) saveToDisk();
   return added;
 }
 
 export function deleteWord(id) {
   const before = words.length;
   words = words.filter((w) => w.id !== id);
-  return words.length < before;
+  const deleted = words.length < before;
+  if (deleted) saveToDisk();
+  return deleted;
 }
 
 export function updateWord(id, patch) {
   const idx = words.findIndex((w) => w.id === id);
   if (idx === -1) return null;
   words[idx] = { ...words[idx], ...patch };
+  saveToDisk();
   return words[idx];
 }

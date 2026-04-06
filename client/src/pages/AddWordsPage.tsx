@@ -1,5 +1,6 @@
 import ManualEntryForm from "../components/import/ManualEntryForm";
 import WebScraper from "../components/import/WebScraper";
+import DocumentImport from "./ImportPage";
 
 export default function AddWordsPage() {
   return (
@@ -13,6 +14,7 @@ export default function AddWordsPage() {
 
       <ManualEntryForm />
       <WebScraper />
+      <DocumentImport />
     </div>
   );
 }

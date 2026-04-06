@@ -1,4 +1,4 @@
-import { BookOpen, LayoutDashboard, Plus, CreditCard, ListOrdered, FileUp, Headphones } from "lucide-react";
+import { BookOpen, LayoutDashboard, Plus, CreditCard, ListOrdered, Headphones } from "lucide-react";
 import type { Page } from "../../App";
 
 interface Props {
@@ -9,7 +9,6 @@ interface Props {
 const nav: { label: string; page: Page; icon: React.ReactNode }[] = [
   { label: "Dashboard",   page: "dashboard",  icon: <LayoutDashboard size={18} /> },
   { label: "Add Words",   page: "add",        icon: <Plus size={18} /> },
-  { label: "Import",      page: "import",     icon: <FileUp size={18} /> },
   { label: "Word List",   page: "wordlist",   icon: <ListOrdered size={18} /> },
   { label: "Flashcards",  page: "flashcards", icon: <CreditCard size={18} /> },
   { label: "Listening",   page: "listening",  icon: <Headphones size={18} /> },
