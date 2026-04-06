@@ -5,6 +5,13 @@ import type { Word } from "../../types";
 import { useWordStore } from "../../store/wordStore";
 import { speakWord } from "../../utils/speech";
 
+const POS_OPTIONS = ["noun", "verb", "adjective", "adverb", "pronoun", "preposition", "conjunction", "determiner", "interjection", "numeral", "unknown"];
+const POS_TO_ZH: Record<string, string> = {
+  noun: "名词", verb: "动词", adjective: "形容词", adverb: "副词", pronoun: "代词",
+  preposition: "介词", conjunction: "连词", determiner: "限定词", interjection: "感叹词",
+  numeral: "数词", unknown: "未知",
+};
+
 interface Props {
   word: Word;
   selected?: boolean;
@@ -40,11 +47,27 @@ export default function WordCard({
 }: Props) {
   const { deleteWord, updateWord } = useWordStore();
   const [editing, setEditing] = useState(false);
-  const [englishExplanation, setEnglishExplanation] = useState(word.englishExplanation || word.translation);
-  const [partOfSpeechZh, setPartOfSpeechZh] = useState(word.partOfSpeechZh);
-  const [article, setArticle] = useState(word.article);
-  const [notes, setNotes] = useState(word.notes);
-  const [category, setCategory] = useState(word.category || "general");
+  const [draft, setDraft] = useState({
+    englishExplanation: word.englishExplanation || word.translation,
+    partOfSpeech: word.partOfSpeech || "unknown",
+    partOfSpeechZh: word.partOfSpeechZh,
+    article: word.article,
+    category: word.category || "general",
+    notes: word.notes,
+  });
+
+  const openEdit = () => {
+    // Always sync from the latest word prop so background enrichment is reflected.
+    setDraft({
+      englishExplanation: word.englishExplanation || word.translation,
+      partOfSpeech: word.partOfSpeech || "unknown",
+      partOfSpeechZh: word.partOfSpeechZh,
+      article: word.article,
+      category: word.category || "general",
+      notes: word.notes,
+    });
+    setEditing(true);
+  };
 
   const handleDelete = async () => {
     await deleteWord(word.id);
@@ -52,13 +75,15 @@ export default function WordCard({
   };
 
   const handleSave = async () => {
+    const zhFromPos = POS_TO_ZH[draft.partOfSpeech] ?? draft.partOfSpeechZh;
     await updateWord(word.id, {
-      translation: englishExplanation,
-      englishExplanation,
-      partOfSpeechZh,
-      article,
-      category,
-      notes,
+      translation: draft.englishExplanation,
+      englishExplanation: draft.englishExplanation,
+      partOfSpeech: draft.partOfSpeech,
+      partOfSpeechZh: zhFromPos,
+      article: draft.article,
+      category: draft.category,
+      notes: draft.notes,
     });
     setEditing(false);
     toast.success("Updated");
@@ -111,7 +136,7 @@ export default function WordCard({
             </>
           ) : (
             <>
-              <button onClick={() => setEditing(true)} className="p-2 rounded-lg hover:bg-brand-50 text-brand-400">
+              <button onClick={openEdit} className="p-2 rounded-lg hover:bg-brand-50 text-brand-400">
                 <Pencil size={15} />
               </button>
               <button onClick={handleDelete} className="p-2 rounded-lg hover:bg-rose-50 text-rose-400">
@@ -126,21 +151,24 @@ export default function WordCard({
         <div className="space-y-2">
           <input
             className="input text-sm"
-            placeholder="English explanation"
-            value={englishExplanation}
-            onChange={(e) => setEnglishExplanation(e.target.value)}
+            placeholder="English explanation / translation"
+            value={draft.englishExplanation}
+            onChange={(e) => setDraft((d) => ({ ...d, englishExplanation: e.target.value }))}
           />
           <div className="grid grid-cols-2 gap-2">
-            <input
-              className="input text-sm"
-              placeholder="Part of speech"
-              value={partOfSpeechZh}
-              onChange={(e) => setPartOfSpeechZh(e.target.value)}
-            />
             <select
               className="input text-sm"
-              value={article}
-              onChange={(e) => setArticle(e.target.value as "de" | "het" | "")}
+              value={draft.partOfSpeech}
+              onChange={(e) => setDraft((d) => ({ ...d, partOfSpeech: e.target.value }))}
+            >
+              {POS_OPTIONS.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+            <select
+              className="input text-sm"
+              value={draft.article}
+              onChange={(e) => setDraft((d) => ({ ...d, article: e.target.value as "de" | "het" | "" }))}
             >
               <option value="">No article</option>
               <option value="de">de</option>
@@ -150,15 +178,15 @@ export default function WordCard({
           <input
             className="input text-sm"
             placeholder="Category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value.toLowerCase())}
+            value={draft.category}
+            onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value.toLowerCase() }))}
           />
           <textarea
             className="input text-sm resize-none"
             rows={2}
             placeholder="Notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={draft.notes}
+            onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
           />
         </div>
       ) : (
