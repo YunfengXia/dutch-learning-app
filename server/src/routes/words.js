@@ -19,18 +19,47 @@ router.post(
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const enriched = await enrichWordEntries([
+    // Save immediately so manual add feels instant, then enrich metadata in background.
+    const added = addWords([
       {
         word: req.body.word,
         notes: req.body.notes,
         source: "manual",
       },
     ]);
-    const added = addWords(enriched);
     if (added.length === 0) {
       return res.status(409).json({ message: "Word already exists" });
     }
-    res.status(201).json(added[0]);
+
+    const created = added[0];
+    res.status(201).json(created);
+
+    void enrichWordEntries(
+      [
+        {
+          word: created.word,
+          notes: created.notes,
+          source: created.source,
+        },
+      ],
+      1,
+      { translationMode: "fast" }
+    )
+      .then((enriched) => {
+        const meta = enriched[0];
+        if (!meta) return;
+        updateWord(created.id, {
+          translation: meta.translation,
+          englishExplanation: meta.englishExplanation,
+          partOfSpeech: meta.partOfSpeech,
+          partOfSpeechZh: meta.partOfSpeechZh,
+          article: meta.article,
+          category: meta.category,
+        });
+      })
+      .catch((err) => {
+        console.error("Background enrichment failed:", err?.message || err);
+      });
   }
 );
 
