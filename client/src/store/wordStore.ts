@@ -6,6 +6,7 @@ import { wordApi } from "../api";
 interface WordStore {
   words: Word[];
   loading: boolean;
+  reviewWordIds: string[];
   fetchWords: (options?: { silent?: boolean }) => Promise<void>;
   addWords: (newWords: Word[]) => void;
   deleteWord: (id: string) => Promise<void>;
@@ -16,6 +17,8 @@ interface WordStore {
       Pick<Word, "translation" | "englishExplanation" | "partOfSpeech" | "partOfSpeechZh" | "article" | "category" | "notes">
     >
   ) => Promise<void>;
+  addToReview: (ids: string[]) => void;
+  removeFromReview: (ids: string[]) => void;
 }
 
 function mergeByWord(existing: Word[], incoming: Word[]): Word[] {
@@ -38,6 +41,20 @@ export const useWordStore = create<WordStore>()(
     (set) => ({
       words: [],
       loading: false,
+      reviewWordIds: [],
+
+      addToReview: (ids) => {
+        set((s) => {
+          const existing = new Set(s.reviewWordIds);
+          for (const id of ids) existing.add(id);
+          return { reviewWordIds: Array.from(existing) };
+        });
+      },
+
+      removeFromReview: (ids) => {
+        const toRemove = new Set(ids);
+        set((s) => ({ reviewWordIds: s.reviewWordIds.filter((id) => !toRemove.has(id)) }));
+      },
 
       fetchWords: async (options) => {
         const silent = options?.silent === true;
@@ -80,7 +97,7 @@ export const useWordStore = create<WordStore>()(
     {
       name: "word-store-v1",
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ words: state.words }),
+      partialize: (state) => ({ words: state.words, reviewWordIds: state.reviewWordIds }),
     }
   )
 );

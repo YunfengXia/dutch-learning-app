@@ -33,7 +33,15 @@ export function sortByStudyFrequency(words: Word[]) {
   });
 }
 
-export function chunkWords(words: Word[], size = 20) {
+export function sortByCreatedAt(words: Word[]): Word[] {
+  return [...words].sort((a, b) => {
+    const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return ta - tb; // oldest first = order of addition
+  });
+}
+
+export function chunkWords(words: Word[], size = 15) {
   const out: Word[][] = [];
   for (let i = 0; i < words.length; i += size) {
     out.push(words.slice(i, i + size));
