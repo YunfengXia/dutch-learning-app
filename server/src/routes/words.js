@@ -1,12 +1,18 @@
 import { Router } from "express";
 import { body, param, validationResult } from "express-validator";
-import { getAll, addWords, deleteWord, updateWord } from "../store.js";
+import { getAll, getById, addWords, deleteWord, updateWord } from "../store.js";
 import { enrichWordEntries } from "../services/wordMeta.js";
 
 const router = Router();
 
 router.get("/", (_req, res) => {
   res.json(getAll());
+});
+
+router.get("/:id", (req, res) => {
+  const word = getById(req.params.id);
+  if (!word) return res.status(404).json({ message: "Not found" });
+  res.json(word);
 });
 
 router.post(

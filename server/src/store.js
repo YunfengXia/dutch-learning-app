@@ -39,6 +39,10 @@ export function getAll() {
   return words;
 }
 
+export function getById(id) {
+  return words.find((w) => w.id === id) ?? null;
+}
+
 export function addWords(entries) {
   const added = [];
   // Deduplicate within the incoming batch (keeps first occurrence)

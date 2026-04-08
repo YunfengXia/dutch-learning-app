@@ -3,9 +3,37 @@ import { PenLine, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { wordApi } from "../../api";
 import { useWordStore } from "../../store/wordStore";
+import type { Word } from "../../types";
+
+type UpdateFn = (id: string, patch: Partial<Pick<Word, "translation" | "englishExplanation" | "partOfSpeech" | "partOfSpeechZh" | "article" | "category" | "notes">>) => Promise<void>;
+
+/** Poll GET /api/words/:id until translation or POS is populated, then patch the store. */
+async function pollForEnrichment(id: string, updateWord: UpdateFn) {
+  const MAX_ATTEMPTS = 20;
+  const INTERVAL_MS = 2000;
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    await new Promise((r) => setTimeout(r, INTERVAL_MS));
+    try {
+      const refreshed = await wordApi.getOne(id);
+      if (refreshed.translation || refreshed.partOfSpeech !== "unknown") {
+        await updateWord(id, {
+          translation: refreshed.translation,
+          englishExplanation: refreshed.englishExplanation,
+          partOfSpeech: refreshed.partOfSpeech,
+          partOfSpeechZh: refreshed.partOfSpeechZh,
+          article: refreshed.article,
+          category: refreshed.category,
+        });
+        return;
+      }
+    } catch {
+      // ignore transient errors and keep retrying
+    }
+  }
+}
 
 export default function ManualEntryForm() {
-  const addWords = useWordStore((s) => s.addWords);
+  const { addWords, updateWord } = useWordStore();
   const [word, setWord] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,9 +45,11 @@ export default function ManualEntryForm() {
     try {
       const created = await wordApi.create({ word: word.trim(), notes });
       addWords([created]);
-      toast.success(`"${created.word}" added!`);
+      toast.success(`"${created.word}" added! Fetching translation…`);
       setWord("");
       setNotes("");
+      // Background: poll until server enrichment finishes, then silently update store
+      void pollForEnrichment(created.id, updateWord);
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??

@@ -6,6 +6,7 @@ const api = axios.create({ baseURL: apiBaseUrl });
 
 export const wordApi = {
   getAll: () => api.get<Word[]>("/words").then((r) => r.data),
+  getOne: (id: string) => api.get<Word>(`/words/${id}`).then((r) => r.data),
   create: (payload: { word: string; notes?: string }) =>
     api.post<Word>("/words", payload).then((r) => r.data),
   update: (
