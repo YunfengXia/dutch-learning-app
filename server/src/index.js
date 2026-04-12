@@ -23,20 +23,39 @@ app.use(
 );
 app.use(express.json());
 
+let dbReady = false;
+
+async function connectDBInBackground() {
+  while (!dbReady) {
+    try {
+      await connectDB();
+      dbReady = true;
+      console.log("MongoDB ready");
+      return;
+    } catch (err) {
+      console.error("MongoDB unavailable, retrying in 10s:", err?.message || err);
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+    }
+  }
+}
+
+app.get("/api/health", (_req, res) => res.json({ ok: true, dbReady }));
+
+// Keep service responsive for Render health checks while DB is connecting.
+app.use("/api", (req, res, next) => {
+  if (req.path === "/health") return next();
+  if (!dbReady) {
+    return res.status(503).json({ message: "Database is warming up. Please retry shortly." });
+  }
+  return next();
+});
+
 app.use("/api/words", wordsRouter);
 app.use("/api/scrape", scrapeRouter);
 app.use("/api/import", importRouter);
 
-app.get("/api/health", (_req, res) => res.json({ ok: true }));
-
-// Connect to MongoDB first, then start HTTP server
-connectDB()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error("Failed to connect to MongoDB:", err);
-    process.exit(1);
-  });
+// Start HTTP server immediately, then warm DB in background.
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  void connectDBInBackground();
+});
