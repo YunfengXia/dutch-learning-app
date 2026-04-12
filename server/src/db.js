@@ -7,8 +7,15 @@ const client = new MongoClient(uri, {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 15000,
   connectTimeoutMS: 15000,
+  // Atlas + some cloud runtimes can be more stable when preferring IPv4.
+  family: 4,
+  tls: true,
 });
 let db = null;
+let lastConnectError = null;
+let lastAttemptAt = null;
+let connectAttempts = 0;
+let lastConnectedAt = null;
 
 export async function connectDB() {
   if (db) return db;
@@ -18,13 +25,18 @@ export async function connectDB() {
 
   let lastError = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    connectAttempts += 1;
+    lastAttemptAt = new Date().toISOString();
     try {
       await client.connect();
       db = client.db(); // uses the database name from the URI
+      lastConnectError = null;
+      lastConnectedAt = new Date().toISOString();
       console.log(`Connected to MongoDB on attempt ${attempt}/${maxAttempts}`);
       return db;
     } catch (err) {
       lastError = err;
+      lastConnectError = err?.message || String(err);
       const waitMs = baseDelayMs * attempt;
       console.error(
         `MongoDB connect attempt ${attempt}/${maxAttempts} failed. Retrying in ${waitMs}ms...`,
@@ -37,6 +49,16 @@ export async function connectDB() {
   }
 
   throw lastError || new Error("MongoDB connection failed");
+}
+
+export function getDBStatus() {
+  return {
+    dbReady: Boolean(db),
+    connectAttempts,
+    lastAttemptAt,
+    lastConnectedAt,
+    lastConnectError,
+  };
 }
 
 export function getDB() {

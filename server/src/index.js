@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { connectDB } from "./db.js";
+import { connectDB, getDBStatus } from "./db.js";
 import wordsRouter from "./routes/words.js";
 import scrapeRouter from "./routes/scrape.js";
 import importRouter from "./routes/importText.js";
@@ -39,7 +39,9 @@ async function connectDBInBackground() {
   }
 }
 
-app.get("/api/health", (_req, res) => res.json({ ok: true, dbReady }));
+app.get("/api/health", (_req, res) => {
+  res.json({ ok: true, dbReady, ...getDBStatus() });
+});
 
 // Keep service responsive for Render health checks while DB is connecting.
 app.use("/api", (req, res, next) => {
