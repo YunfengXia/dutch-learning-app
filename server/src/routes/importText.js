@@ -127,7 +127,7 @@ router.post("/confirm", async (req, res) => {
 
   const enriched = await enrichWordEntries(entries, 12, { translationMode: "fast" });
   const dutchEntries = enriched.filter((e) => e.isDutch).map(({ isDutch, ...rest }) => rest);
-  const added = addWords(dutchEntries);
+  const added = await addWords(dutchEntries);
 
   res.json({ requested: entries.length, dutchCount: dutchEntries.length, addedCount: added.length, words: added });
 });

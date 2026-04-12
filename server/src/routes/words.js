@@ -5,12 +5,12 @@ import { enrichWordEntries } from "../services/wordMeta.js";
 
 const router = Router();
 
-router.get("/", (_req, res) => {
-  res.json(getAll());
+router.get("/", async (_req, res) => {
+  res.json(await getAll());
 });
 
-router.get("/:id", (req, res) => {
-  const word = getById(req.params.id);
+router.get("/:id", async (req, res) => {
+  const word = await getById(req.params.id);
   if (!word) return res.status(404).json({ message: "Not found" });
   res.json(word);
 });
@@ -26,7 +26,7 @@ router.post(
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     // Save immediately so manual add feels instant, then enrich metadata in background.
-    const added = addWords([
+    const added = await addWords([
       {
         word: req.body.word,
         notes: req.body.notes,
@@ -81,17 +81,17 @@ router.patch(
     body("category").optional().trim(),
     body("notes").optional().trim(),
   ],
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-    const updated = updateWord(req.params.id, req.body);
+    const updated = await updateWord(req.params.id, req.body);
     if (!updated) return res.status(404).json({ message: "Not found" });
     res.json(updated);
   }
 );
 
-router.delete("/:id", (req, res) => {
-  const deleted = deleteWord(req.params.id);
+router.delete("/:id", async (req, res) => {
+  const deleted = await deleteWord(req.params.id);
   if (!deleted) return res.status(404).json({ message: "Not found" });
   res.status(204).end();
 });

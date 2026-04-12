@@ -86,7 +86,7 @@ router.post("/", upload.single("file"), async (req, res) => {
       .filter((e) => e.isDutch)
       .map(({ isDutch, ...rest }) => rest);
 
-    const added = addWords(dutchEntries);
+    const added = await addWords(dutchEntries);
     console.log(`[OCR] Complete: ${words.length} extracted → ${dutchEntries.length} Dutch → ${added.length} added`);
 
     res.json({

@@ -11,3 +11,5 @@ services:
         value: 20
       - key: ALLOWED_ORIGINS
         value: https://your-frontend.vercel.app
+      - key: MONGODB_URI
+        sync: false   # Set this manually in Render dashboard → Environment

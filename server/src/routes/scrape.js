@@ -40,7 +40,7 @@ router.post(
         .filter((e) => e.isDutch)
         .map(({ isDutch, ...rest }) => rest);
 
-      const added = addWords(dutchEntries);
+      const added = await addWords(dutchEntries);
       res.json({
         scrapedCount: rankedWords.length,
         dutchCount: dutchEntries.length,

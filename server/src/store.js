@@ -1,51 +1,50 @@
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, "..", "data");
-const DATA_FILE = path.join(DATA_DIR, "words.json");
+import { getCollection } from "./db.js";
 
 /**
- * File-backed word store.
- * Words are persisted to data/words.json so they survive server restarts.
+ * MongoDB-backed word store.
+ * All functions are async now; callers in routes already await them.
+ *
+ * Word shape (stored in MongoDB):
+ * {
+ *   _id: ObjectId (internal),
+ *   id: string,        ← kept for API compatibility
+ *   word: string,
+ *   translation: string,
+ *   englishExplanation: string,
+ *   partOfSpeech: string,
+ *   partOfSpeechZh: string,
+ *   article: "de" | "het" | "",
+ *   notes: string,
+ *   usageCount: number,
+ *   source: "manual" | "scrape" | "import" | "ocr",
+ *   category: string,
+ *   createdAt: string (ISO),
+ * }
  */
 
-function loadFromDisk() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-    if (!fs.existsSync(DATA_FILE)) return { words: [], nextId: 1 };
-    const raw = fs.readFileSync(DATA_FILE, "utf8");
-    return JSON.parse(raw);
-  } catch {
-    return { words: [], nextId: 1 };
-  }
+function strip(doc) {
+  if (!doc) return null;
+  const { _id, ...rest } = doc;
+  return rest;
 }
 
-function saveToDisk() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(DATA_FILE, JSON.stringify({ words, nextId }, null, 2), "utf8");
-  } catch (err) {
-    console.error("Failed to persist words:", err);
-  }
+export async function getAll() {
+  const col = getCollection();
+  const docs = await col.find({}, { sort: { createdAt: 1 } }).toArray();
+  return docs.map(strip);
 }
 
-const stored = loadFromDisk();
-let words = stored.words;
-let nextId = stored.nextId ?? 1;
-
-export function getAll() {
-  return words;
+export async function getById(id) {
+  const col = getCollection();
+  const doc = await col.findOne({ id });
+  return strip(doc);
 }
 
-export function getById(id) {
-  return words.find((w) => w.id === id) ?? null;
-}
-
-export function addWords(entries) {
+export async function addWords(entries) {
+  const col = getCollection();
   const added = [];
-  // Deduplicate within the incoming batch (keeps first occurrence)
+
+  // Deduplicate within the incoming batch
   const seenInBatch = new Set();
   const uniqueEntries = [];
   for (const entry of entries) {
@@ -57,12 +56,10 @@ export function addWords(entries) {
   }
 
   for (const entry of uniqueEntries) {
-    const exists = words.find(
-      (w) => w.word.toLowerCase() === entry.word.toLowerCase()
-    );
+    const exists = await col.findOne({ word: { $regex: new RegExp(`^${entry.word}$`, "i") } });
     if (!exists) {
       const record = {
-        id: String(nextId++),
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         word: entry.word,
         translation: entry.translation ?? "",
         englishExplanation: entry.englishExplanation ?? "",
@@ -73,28 +70,28 @@ export function addWords(entries) {
         usageCount: typeof entry.usageCount === "number" ? entry.usageCount : 1,
         source: entry.source ?? "manual",
         category: entry.category ?? "general",
-        createdAt: new Date().toISOString(),
+        createdAt: entry.createdAt ?? new Date().toISOString(),
       };
-      words.push(record);
-      added.push(record);
+      await col.insertOne(record);
+      added.push(strip(record));
     }
   }
-  if (added.length > 0) saveToDisk();
   return added;
 }
 
-export function deleteWord(id) {
-  const before = words.length;
-  words = words.filter((w) => w.id !== id);
-  const deleted = words.length < before;
-  if (deleted) saveToDisk();
-  return deleted;
+export async function deleteWord(id) {
+  const col = getCollection();
+  const result = await col.deleteOne({ id });
+  return result.deletedCount > 0;
 }
 
-export function updateWord(id, patch) {
-  const idx = words.findIndex((w) => w.id === id);
-  if (idx === -1) return null;
-  words[idx] = { ...words[idx], ...patch };
-  saveToDisk();
-  return words[idx];
+export async function updateWord(id, patch) {
+  const col = getCollection();
+  const result = await col.findOneAndUpdate(
+    { id },
+    { $set: patch },
+    { returnDocument: "after" }
+  );
+  return strip(result);
 }
+
