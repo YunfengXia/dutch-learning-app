@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, BookOpen, Layers, Globe, Trash2 } from "lucide-react";
+import { Search, BookOpen, Layers, Globe, Trash2, PenLine, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useWordStore } from "../store/wordStore";
 import WordCard from "../components/words/WordCard";
-import type { WordSource } from "../types";
+import type { Word, WordSource } from "../types";
 import { initSpeechVoices } from "../utils/speech";
+import { wordApi } from "../api";
 
 const SOURCES: { label: string; value: WordSource | "all" }[] = [
   { label: "All", value: "all" },
@@ -13,8 +14,34 @@ const SOURCES: { label: string; value: WordSource | "all" }[] = [
   { label: "Scraped", value: "scrape" },
 ];
 
+type UpdateFn = (id: string, patch: Partial<Pick<Word, "translation" | "englishExplanation" | "partOfSpeech" | "partOfSpeechZh" | "article" | "category" | "notes">>) => Promise<void>;
+
+async function pollForEnrichment(id: string, updateWord: UpdateFn) {
+  const MAX_ATTEMPTS = 20;
+  const INTERVAL_MS = 2000;
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    await new Promise((r) => setTimeout(r, INTERVAL_MS));
+    try {
+      const refreshed = await wordApi.getOne(id);
+      if (refreshed.translation || refreshed.partOfSpeech !== "unknown") {
+        await updateWord(id, {
+          translation: refreshed.translation,
+          englishExplanation: refreshed.englishExplanation,
+          partOfSpeech: refreshed.partOfSpeech,
+          partOfSpeechZh: refreshed.partOfSpeechZh,
+          article: refreshed.article,
+          category: refreshed.category,
+        });
+        return;
+      }
+    } catch {
+      // retry
+    }
+  }
+}
+
 export default function DashboardPage() {
-  const { words, loading, fetchWords, deleteWords } = useWordStore();
+  const { words, loading, fetchWords, deleteWords, addWords, updateWord } = useWordStore();
   const bootstrapped = useRef(false);
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState<WordSource | "all">("all");
@@ -22,6 +49,8 @@ export default function DashboardPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dragAction, setDragAction] = useState<"select" | "deselect" | null>(null);
+  const [quickWord, setQuickWord] = useState("");
+  const [quickLoading, setQuickLoading] = useState(false);
 
   useEffect(() => {
     if (bootstrapped.current) return;
@@ -110,6 +139,26 @@ export default function DashboardPage() {
     setSelectionMode(false);
   };
 
+  const handleQuickAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickWord.trim()) return;
+    setQuickLoading(true);
+    try {
+      const created = await wordApi.create({ word: quickWord.trim() });
+      addWords([created]);
+      toast.success(`"${created.word}" added! Fetching translation…`);
+      setQuickWord("");
+      void pollForEnrichment(created.id, updateWord);
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Failed to add word";
+      toast.error(message);
+    } finally {
+      setQuickLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-6 py-8 space-y-8" onPointerUp={endDrag}>
       <div>
@@ -193,6 +242,26 @@ export default function DashboardPage() {
         </button>
         {selectionMode && <p className="text-xs text-slate-400 ml-auto">Tip: hold click and swipe across cards to select/deselect quickly.</p>}
       </div>
+
+      <form onSubmit={handleQuickAdd} className="flex gap-2 items-center">
+        <div className="relative flex-1">
+          <PenLine size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            className="input pl-9"
+            placeholder="Quick add a Dutch word…"
+            value={quickWord}
+            onChange={(e) => setQuickWord(e.target.value)}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={quickLoading || !quickWord.trim()}
+          className="btn-primary shrink-0 inline-flex items-center gap-2 disabled:opacity-50"
+        >
+          {quickLoading ? <Loader2 size={15} className="animate-spin" /> : null}
+          Add Word
+        </button>
+      </form>
 
       {loading ? (
         <div className="text-center text-slate-400 py-16 text-sm">Loading vocabulary…</div>

@@ -93,7 +93,7 @@ export default function ManualEntryForm() {
           />
         </div>
         <p className="text-xs text-slate-400">
-          After you add the word, the app auto-fetches English explanation, 词性, and de/het for nouns.
+          After you add the word, the app auto-fetches English explanation, part of speech, and de/het for nouns.
         </p>
         <button className="btn-primary w-full justify-center" type="submit" disabled={loading}>
           {loading ? <Loader2 size={16} className="animate-spin" /> : null}
